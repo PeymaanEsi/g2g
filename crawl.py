@@ -21,28 +21,27 @@ except sqlite3.Error:
 
 def get_trends_web():
 
+    
     try:
         driver = Chrome()
         print("Driver Created.")
-    except:
-        print("DRIVER ERROR!")
+    except Exception as e:
+        print("DRIVER ERROR!", e)
         exit(-1)
-
-    wait = WebDriverWait(driver=driver, timeout=10)
-
-    driver.maximize_window()
 
     urls = []
     try:
         driver.get("https://www.g2g.com/trending/game-coins")
+        wait = WebDriverWait(driver=driver, timeout=10)
+        driver.maximize_window()
         wait.until(
             lambda driver: driver.execute_script("return document.readyState")
             == "complete"
         )
         print("Page Loaded.")
         press("f12")
+        time.sleep(10)
         # import time
-        # time.sleep(1000)
     except Exception as e:
         print("GET ERROR!", e)
         exit(-1)
@@ -92,46 +91,46 @@ def get_offers_web(game_name, games_url):
         try:
             driver = Chrome()
             print("Driver Created.")
-        except:
-            print("DRIVER ERROR!")
+        except Exception as e:
+            print("DRIVER ERROR!", e)
             exit(-1)
-
-        wait = WebDriverWait(driver=driver, timeout=10)
-
-        driver.maximize_window()
 
         try:
             print("Page", page_number)
             driver.get(games_url + "?page=" + str(page_number))
+            wait = WebDriverWait(driver=driver, timeout=10)
+            driver.maximize_window()
         except Exception as e:
             print("GET ERROR!", e)
             return
 
-        wait.until(
-            lambda driver: driver.execute_script("return document.readyState")
-            == "complete"
-        )
-
-        time.sleep(10)
-        press("f12")
-
-        # offers_boxes = driver.find_elements(by=By.CLASS_NAME, value="col-xs-12")
-
-        offers_boxes = driver.find_elements(
-            by=By.CSS_SELECTOR, value=".col-xs-12.col-sm-6.col-md-3"
-        )
-
-        if len(offers_boxes) == 0:
-            print("NOTHING!")
-            page_number = 1
-            break
-
-        print("Found", len(offers_boxes), "offers.")
-
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "ellipsis-2-lines")))
-
         try:
-            print("TEST")
+            wait.until(
+                lambda driver: driver.execute_script("return document.readyState")
+                == "complete"
+            )
+
+            press("f12")
+            time.sleep(10)
+
+            # offers_boxes = driver.find_elements(by=By.CLASS_NAME, value="col-xs-12")
+
+            offers_boxes = driver.find_elements(
+                by=By.CSS_SELECTOR, value=".col-xs-12.col-sm-6.col-md-3"
+            )
+
+            if len(offers_boxes) == 0:
+                print("NOTHING!")
+                # page_number = 1
+                break
+
+            print("Found", len(offers_boxes), "offers.")
+
+            wait.until(
+                EC.presence_of_element_located((By.CLASS_NAME, "ellipsis-2-lines"))
+            )
+
+            # print("TEST")
             for offer_box in offers_boxes:
                 title = (
                     offer_box.find_element(
@@ -152,45 +151,39 @@ def get_offers_web(game_name, games_url):
 
                 data = (title, price, datetime.datetime.now().timestamp(), game_id)
 
-                print(data, sep="\t")
+                # print(data, sep="\t")
+
+                try:
+                    db.execute(
+                        "INSERT INTO offer('name', 'price', 'time', 'gameid') VALUES (?, ?, ?, ?)",
+                        data,
+                    )
+                    # print('YO')
+                    db.commit()
+                    # print('toto')
+                except Exception as e:
+                    print("UNIQUE ERROR!", e)
+                    continue
 
         except Exception as e:
             print("CRAWL ERROR!", e)
-
-            # currency = (
-            #     offer_box.find_element(by=By.CSS_SELECTOR, value=".col-grow.order-last")
-            #     .find_elements(by=By.TAG_NAME, value="span")[2]
-            #     .text
-            # )
-
-            # count = offer_box.find_element(
-            #     by=By.CSS_SELECTOR, value=".g-chip-counter"
-            # ).text
-
-            try:
-                db.execute(
-                    "INSERT INTO offer('name', 'price', 'time', 'gameid') VALUES (?, ?, ?, ?)",
-                    data,
-                )
-                db.commit()
-            except sqlite3.IntegrityError as e:
-                print("UNIQUE ERROR!", e)
-                # continue
+            continue
 
         page_number += 1
 
         # driver.close()
 
 
-trends = get_trends_web()
-# print(trends)
-for game in trends:
-    print("Get offers from game", game[0])
-    if game[0]:
-        get_offers_web(game[0], game[1])
+def main():
+    trends = get_trends_web()
+    # print(trends)
+    for game in trends:
+        if game[0]:
+            print("Get offers from game", game[0])
+            get_offers_web(game[0], game[1])
 
-print("Finish")
+    print("Finish")
 
-db.commit()
+    db.commit()
 
-# db.close()
+    # db.close()
