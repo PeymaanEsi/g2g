@@ -97,7 +97,7 @@ def get_offers_web(game_name, games_url):
 
         try:
             print("Page", page_number)
-            driver.get(games_url + "?page=" + str(page_number))
+            driver.get(games_url + "?region_id=ac3f85c1-7562-437e-b125-e89576b9a38e&page=" + str(page_number))
             wait = WebDriverWait(driver=driver, timeout=10)
             driver.maximize_window()
         except Exception as e:

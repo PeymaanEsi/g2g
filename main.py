@@ -1,13 +1,12 @@
 import schedule
 import time
-
-from .crawl import main
+import crawl
 
 def job():
     print("Main")
-    main()
+    crawl.main()
 
-# schedule.every(10).minutes.do(job)
+# schedule.every(30).minutes.do(job)
 schedule.every().hour.do(job)
 # schedule.every().day.at("10:30").do(job)
 # schedule.every().monday.do(job)
@@ -15,6 +14,12 @@ schedule.every().hour.do(job)
 # schedule.every().day.at("12:42", "Europe/Amsterdam").do(job)
 # schedule.every().minute.at(":17").do(job)
 
+# while True:
+#     schedule.run_pending()
+#     time.sleep(10)
+
 while True:
-    schedule.run_pending()
-    time.sleep(10)
+    try:
+        job()
+    except Exception as e:
+        print('ERROR!', e)

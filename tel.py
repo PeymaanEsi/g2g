@@ -1,8 +1,8 @@
-TOKEN = "6255848310:AAHkqJORIdCX85-3EvBlyLYevh_Q4liQHcA"
+TOKEN = "6863511511:AAHL0A0qEtjGIciV6VSLUMgZSUBNfonD0kE"
 
-ID = "24523436"
+ID = "24655557"
 
-HASH = "3ee21bc315a5d5eedc469e3493b40472"
+HASH = "d9d6471436f1e5bcac3cdfef6bf8b8e1"
 
 import sqlite3
 import time
@@ -13,6 +13,7 @@ import aiosqlite
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.handlers.message_handler import MessageHandler
 
 
 app = Client("gameg0bot", api_id=ID, api_hash=HASH, bot_token=TOKEN)
@@ -22,7 +23,13 @@ app = Client("gameg0bot", api_id=ID, api_hash=HASH, bot_token=TOKEN)
 @app.on_message(filters.command("start"))
 async def start_command(client, message):
     await message.reply_text(
-        "Hi, I'm GameG0 Bot. Select A Game To See Offers With /offer."
+        """
+👋درود👋
+🤖به بات GaemG0 خوش اومدید🤖
+🤑برای دیدن قیمت آفرها🤑
+ 👇لطفا روی دستور زیر کلیک کنید👇
+/search
+"""
     )
 
 
@@ -60,25 +67,25 @@ async def callback_query_handler(client, callback_query):
 
     # print(callback_query.data)
 
-    current_time = datetime.datetime.now()
+    # current_time = datetime.datetime.now()
 
     # Calculate the time one hour ago
-    one_hour_ago = current_time - datetime.timedelta(hours=1)
+    # one_hour_ago = current_time - datetime.timedelta(hours=1)
 
     # Get the timestamp for one hour ago
-    timestamp_one_hour_ago = one_hour_ago.timestamp()
+    # timestamp_one_hour_ago = one_hour_ago.timestamp()
 
     # print(current_time.timestamp(), timestamp_one_hour_ago)
 
     offers = await db.execute(
-        "SELECT name, price FROM offer WHERE gameid = ? AND time < ?",
-        (callback_query.data, timestamp_one_hour_ago),
+        "SELECT name, price FROM offer WHERE gameid = ? ORDER BY time DESC LIMIT 500",
+        (callback_query.data, ),
     )
 
     data = await offers.fetchall()
 
     # Paginate the data
-    page_size = 5  # You can adjust the number of items per page
+    page_size = 40  # You can adjust the number of items per page
     num_pages = ceil(len(data) / page_size)
 
     page = int(callback_query.data) if callback_query.data.isdigit() else 1
@@ -100,12 +107,35 @@ async def callback_query_handler(client, callback_query):
 
     pagination_keyboard = InlineKeyboardMarkup([pagination_buttons])
 
+    # print(current_page_data)
+
+    msg = ""
+
+    for o in current_page_data:
+        o = str(o)
+        o = o.replace("(", "")
+        o = o.replace(")", "")
+        o = o.replace("'", "")
+        o += '\n'
+        o = '🗾' + o
+        o = o.replace('[', '🌐: [')
+        o = o.replace('Alliance', '🤺')
+        o = o.replace('Horde', '👹')
+        o = o.replace(',', ', 💵: ')
+        # print(o)
+        msg += o
+
+    msg = msg + '\n Page: ' + str(page)
+
     # Send the data with pagination
     await client.send_message(
         callback_query.from_user.id,
-        text=current_page_data[:100],
+        text=msg,
         reply_markup=pagination_keyboard,
     )
+
+# app.add_handler(MessageHandler("start"))
+# app.add_handler(MessageHandler("offer"))
 
 # Run the bot
 app.run()
