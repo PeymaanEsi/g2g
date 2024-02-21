@@ -1,63 +1,21 @@
-TOKEN = "6863511511:AAHL0A0qEtjGIciV6VSLUMgZSUBNfonD0kE"
-
-ID = "24655557"
-
-HASH = "d9d6471436f1e5bcac3cdfef6bf8b8e1"
-
 import sqlite3
-import time
-import datetime
-from math import ceil
 
 import aiosqlite
 
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.handlers.message_handler import MessageHandler
+from telethon.sync import TelegramClient, events
+
+# Replace these values with your own API ID and Hash
+api_id = "24655557"
+api_hash = "d9d6471436f1e5bcac3cdfef6bf8b8e1"
+
+import aiosqlite
+from telethon.sync import TelegramClient, events
+
+# Create a TelegramClient instance
+client = TelegramClient("GameG0Bot", api_id, api_hash)
 
 
-app = Client("gameg0bot", api_id=ID, api_hash=HASH, bot_token=TOKEN)
-
-
-# Define a command handler
-@app.on_message(filters.command("start"))
-async def start_command(client, message):
-    await message.reply_text(
-        """
-👋درود👋
-🤖به بات GaemG0 خوش اومدید🤖
-🤑برای دیدن قیمت آفرها🤑
- 👇لطفا روی دستور زیر کلیک کنید👇
-/search
-"""
-    )
-
-
-@app.on_message(filters.command("offer"))
-async def offer_command(client, message):
-    try:
-        db = await aiosqlite.connect(database="./db.sqlite3")
-        print("DB Connected.")
-    except sqlite3.Error:
-        print("DB ERROR!")
-        exit(-1)
-    games = await db.execute("SELECT name, id FROM game")
-    games = await games.fetchall()
-    # print(games)
-    inlines = []
-    for game in games:
-        if game[0]:
-            inlines.append([InlineKeyboardButton(game[0], callback_data=str(game[1]))])
-    keyboard = InlineKeyboardMarkup(inlines)
-
-    await message.reply_text("Select a game:", reply_markup=keyboard)
-
-    await db.close()
-
-
-# Define a callback query handler
-@app.on_callback_query()
-async def callback_query_handler(client, callback_query):
+async def search_in_database(query):
     try:
         db = await aiosqlite.connect(database="./db.sqlite3")
         print("DB Connected.")
@@ -65,77 +23,67 @@ async def callback_query_handler(client, callback_query):
         print("DB ERROR!")
         exit(-1)
 
-    # print(callback_query.data)
-
-    # current_time = datetime.datetime.now()
-
-    # Calculate the time one hour ago
-    # one_hour_ago = current_time - datetime.timedelta(hours=1)
-
-    # Get the timestamp for one hour ago
-    # timestamp_one_hour_ago = one_hour_ago.timestamp()
-
-    # print(current_time.timestamp(), timestamp_one_hour_ago)
-
-    offers = await db.execute(
-        "SELECT name, price FROM offer WHERE gameid = ? ORDER BY time DESC LIMIT 500",
-        (callback_query.data, ),
+    # Execute a query to search for the given name in the database
+    cursor = await db.execute(
+        "SELECT name, price FROM offer WHERE name LIKE ? ORDER BY time DESC LIMIT 4",
+        ("%" + query + "%",),
     )
 
-    data = await offers.fetchall()
-
-    # Paginate the data
-    page_size = 40  # You can adjust the number of items per page
-    num_pages = ceil(len(data) / page_size)
-
-    page = int(callback_query.data) if callback_query.data.isdigit() else 1
-    start_index = (page - 1) * page_size
-    end_index = start_index + page_size
-
-    current_page_data = data[start_index:end_index]
-
-    # Create a new InlineKeyboardMarkup for pagination
-    pagination_buttons = []
-    if page > 1:
-        pagination_buttons.append(
-            InlineKeyboardButton("Previous", callback_data=str(page - 1))
-        )
-    if page < num_pages:
-        pagination_buttons.append(
-            InlineKeyboardButton("Next", callback_data=str(page + 1))
-        )
-
-    pagination_keyboard = InlineKeyboardMarkup([pagination_buttons])
-
-    # print(current_page_data)
+    # Fetch the results
+    data = await cursor.fetchall()
 
     msg = ""
 
-    for o in current_page_data:
+    for o in data:
         o = str(o)
+        # print(repr(o), type(o))
         o = o.replace("(", "")
         o = o.replace(")", "")
         o = o.replace("'", "")
-        o += '\n'
-        o = '🗾' + o
-        o = o.replace('[', '🌐: [')
-        o = o.replace('Alliance', '🤺')
-        o = o.replace('Horde', '👹')
-        o = o.replace(',', ', 💵: ')
+        o += "\n"
+        o = "🗾" + o
+        o = o.replace("[", "🌐: [")
+        o = o.replace("Alliance", "🤺(A)")
+        o = o.replace("Horde", "👹(H)")
+        o = o.replace(",", ", 💵: ")
         # print(o)
         msg += o
 
-    msg = msg + '\n Page: ' + str(page)
+    return msg
 
-    # Send the data with pagination
-    await client.send_message(
-        callback_query.from_user.id,
-        text=msg,
-        reply_markup=pagination_keyboard,
-    )
 
-# app.add_handler(MessageHandler("start"))
-# app.add_handler(MessageHandler("offer"))
+@client.on(events.NewMessage(pattern="/start"))
+async def start(event):
+    await event.respond('''
 
-# Run the bot
-app.run()
+❓لطفا رِلم بازی (realm) را جست و جو کنید❓
+❗در صورت پیدا نشدن دستور(search/) را بزنید❗
+👇مانند نوشته زیر👇
+/search Realm
+''')
+
+
+@client.on(events.NewMessage(pattern="/search"))
+async def search(event):
+    await event.respond("Please enter the name or keyword you want to search:")
+    await client.send_typing(event.chat_id)
+
+
+@client.on(events.NewMessage)
+async def handle_message(event):
+    if event.text.startswith("/search"):
+        query = event.text.split("/search", 1)[1].strip()
+        results = await search_in_database(query)
+        if results:
+            await event.respond(f'{results}')
+        else:
+            await event.respond(f'No results found for "{query}"')
+
+
+async def main():
+    await client.start()
+    await client.run_until_disconnected()
+
+
+if __name__ == "__main__":
+    client.loop.run_until_complete(main())

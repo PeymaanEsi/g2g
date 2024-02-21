@@ -20,7 +20,7 @@ schedule.every(15).minutes.do(job)
 
 while True:
     try:
-        job()
-        # schedule.run_pending()
+        # job()
+        schedule.run_pending()
     except Exception as e:
         print('ERROR!', e)
