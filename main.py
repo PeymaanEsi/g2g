@@ -6,8 +6,8 @@ def job():
     print("Main")
     crawl.main()
 
-# schedule.every(30).minutes.do(job)
-schedule.every().hour.do(job)
+schedule.every(15).minutes.do(job)
+# schedule.every().hour.do(job)
 # schedule.every().day.at("10:30").do(job)
 # schedule.every().monday.do(job)
 # schedule.every().wednesday.at("13:15").do(job)
@@ -21,5 +21,6 @@ schedule.every().hour.do(job)
 while True:
     try:
         job()
+        # schedule.run_pending()
     except Exception as e:
         print('ERROR!', e)

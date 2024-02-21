@@ -13,7 +13,7 @@ from pyautogui import press
 
 try:
     db = sqlite3.connect(database="./db.sqlite3")
-    print("DB Connected.")
+    # print("DB Connected.")
 except sqlite3.Error:
     print("DB ERROR!")
     exit(-1)
@@ -21,10 +21,9 @@ except sqlite3.Error:
 
 def get_trends_web():
 
-    
     try:
         driver = Chrome()
-        print("Driver Created.")
+        # print("Driver Created.")
     except Exception as e:
         print("DRIVER ERROR!", e)
         exit(-1)
@@ -38,7 +37,7 @@ def get_trends_web():
             lambda driver: driver.execute_script("return document.readyState")
             == "complete"
         )
-        print("Page Loaded.")
+        # print("Page Loaded.")
         press("f12")
         time.sleep(10)
         # import time
@@ -52,52 +51,59 @@ def get_trends_web():
         ).find_elements(by=By.TAG_NAME, value="a")
         print(len(trends_boards), "swiper-wrapper Found.")
         for trend_board in trends_boards:
-            trends_name = trend_board.find_element(
-                by=By.CLASS_NAME, value="ellipsis-2-lines"
-            ).text
+            # trends_name = trend_board.find_element(
+                # by=By.CLASS_NAME, value="ellipsis-2-lines"
+            # ).text
             trend_url = trend_board.get_attribute("href")
             try:
-                print(trends_name, trend_url)
+                print(trend_url)
                 db.execute(
-                    "INSERT INTO game('name', 'url') VALUES (?, ?)",
-                    (trends_name, trend_url),
+                    "INSERT INTO game('url') VALUES (?)",
+                    (trend_url, ),
                 )
                 db.commit()
             except sqlite3.IntegrityError as e:
                 print("UNIQUE ERROR!", e)
                 # continue
             finally:
-                urls.append((trends_name, trend_url))
+                urls.append(trend_url)
                 # print('f')
                 # print(urls)
-    except:
-        print("swiper-wrapper NOT FOUND!")
+    except Exception as e:
+        print("swiper-wrapper NOT FOUND!", e)
 
-    print("DONE")
+    print("TREND DONE!")
     # driver.__exit__()
+    driver.close()
     return urls
 
 
-def get_offers_web(game_name, games_url):
+def get_offers_web(games_url):
 
-    id_query = "SELECT id, name FROM game WHERE name = " + "'" + game_name + "'"
+    id_query = "SELECT id, url FROM game WHERE url = " + "'" + games_url + "'"
 
     game_id = db.execute(id_query).fetchall()[0][0]
 
     page_number = 1
 
+    # print('GET FROM', games_url)
+
     while True:
 
         try:
             driver = Chrome()
-            print("Driver Created.")
+            # print("Driver Created.")
         except Exception as e:
             print("DRIVER ERROR!", e)
             exit(-1)
 
         try:
             print("Page", page_number)
-            driver.get(games_url + "?region_id=ac3f85c1-7562-437e-b125-e89576b9a38e&page=" + str(page_number))
+            driver.get(
+                games_url
+                + "?region_id=ac3f85c1-7562-437e-b125-e89576b9a38e&page="
+                + str(page_number)
+            )
             wait = WebDriverWait(driver=driver, timeout=10)
             driver.maximize_window()
         except Exception as e:
@@ -112,6 +118,12 @@ def get_offers_web(game_name, games_url):
 
             press("f12")
             time.sleep(10)
+
+            # driver.find_element(by=By.CSS_SELECTOR, value='.row.items-center.q-gutter-x-sm.no-wrap.notranslate').click()
+
+            # time.sleep(5)
+
+            # driver.find_element(by=By.LINK_TEXT, value='US Dollar (US $)')
 
             # offers_boxes = driver.find_elements(by=By.CLASS_NAME, value="col-xs-12")
 
@@ -147,6 +159,12 @@ def get_offers_web(game_name, games_url):
                     .text
                 )
 
+                price = float(price) * 1.08
+
+                price = price * 0.88
+
+                price = str(price)
+
                 # print('IDddddd', game_id)
 
                 data = (title, price, datetime.datetime.now().timestamp(), game_id)
@@ -177,12 +195,13 @@ def get_offers_web(game_name, games_url):
 def main():
     trends = get_trends_web()
     # print(trends)
-    for game in trends:
-        if game[0]:
-            print("Get offers from game", game[0])
-            get_offers_web(game[0], game[1])
+    for url in trends:
+        print("Get offers from game", url)
+        get_offers_web(url)
 
     print("Finish")
+
+    print(repr(datetime.datetime.now()))
 
     db.commit()
 
